@@ -86,7 +86,7 @@ function ReviewerDocumentsRow({ data }) {
               "&:hover": { backgroundColor: "#02575f" },
             }}
             onClick={() => {
-              window.location.href = data.documents[0];
+              window.location.href = data.documents;
             }}
           >
             <FiDownload size={18} className="text-white" />

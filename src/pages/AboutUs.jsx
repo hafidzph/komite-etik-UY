@@ -110,7 +110,7 @@ function AboutUs() {
                 Paramaresthi Windriyani, S.Kom., M.Eng.
               </span>
               <span className="font-bold text-md text-color-secondary">
-                Mentor
+                Pembimbing
               </span>
             </div>
             <div className="flex flex-col items-start justify-center gap-14">

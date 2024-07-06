@@ -59,13 +59,23 @@ export async function updateDocument({ formData, id }) {
     });
     return response.data;
   } catch (error) {
-    if (error.response) {
-      console.log(error.response.data);
-    } else if (error.request) {
-      console.log(error.request);
-    } else {
-      console.log("Error", error.message);
-    }
+    throw new Error(error);
+  }
+}
+
+export async function updateFormSurat({ formData, id }) {
+  try {
+    const response = await axiosInstance.patch(
+      `/documents/${id}/formSurat`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
     throw new Error(error);
   }
 }

@@ -25,9 +25,9 @@ function BriefInformation() {
               label="Pengguna Aktif"
             />
             <InfoBox
-              number={statistics.percentageCompleted}
+              number={parseInt(statistics.percentageCompleted)}
               label="Persentase Selesai"
-              isPercentage="percentage"
+              isPercentage={true}
             />
             <InfoBox
               number={statistics.uploadedFilesCount}
@@ -44,7 +44,7 @@ function InfoBox({ number, label, isPercentage }) {
   return (
     <div className="flex flex-col gap-4 justify-center items-center">
       <CountUp
-        end={number}
+        end={isPercentage ? parseFloat(number) : number}
         duration={2}
         start={0}
         suffix={isPercentage ? "%" : ""}
