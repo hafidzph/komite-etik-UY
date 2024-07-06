@@ -42,13 +42,13 @@ router.patch(
   updatePhoto,
 );
 
-router.route('/').get(getAllUsers).post(createUser);
+router.route('/').get(authorize, getAllUsers).post(createUser);
 
 router.route('/user').get(authorize, getUser);
 
 router
   .route('/:id')
-  .get(getUserById)
+  .get(authorize, getUserById)
   .patch(authorize, restrictTo('admin'), updateUser)
   .delete(authorize, restrictTo('admin'), deleteUser);
 

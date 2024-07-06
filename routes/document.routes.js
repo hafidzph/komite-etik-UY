@@ -1,4 +1,6 @@
 const express = require('express');
+const multer = require('multer');
+
 const {
   uploadDocuments,
   uploadUserDocuments,
@@ -9,10 +11,12 @@ const {
   sendStatus,
   getDocument,
   updateDocuments,
+  updateFormSurat,
 } = require('../controllers/document.controller');
 const { authorize, restrictTo } = require('../middlewares/auth.middleware');
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 router
   .route('/')
@@ -45,6 +49,14 @@ router.patch(
   authorize,
   restrictTo('admin'),
   sendStatus,
+);
+
+router.patch(
+  '/:documentId/formSurat',
+  authorize,
+  restrictTo('admin'),
+  upload.single('formSurat'),
+  updateFormSurat,
 );
 
 module.exports = router;

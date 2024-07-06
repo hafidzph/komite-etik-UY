@@ -2,6 +2,7 @@
 const multer = require('multer');
 const archiver = require('archiver');
 const { Storage } = require('@google-cloud/storage');
+const AdmZip = require('adm-zip');
 
 const path = require('path');
 const catchAsync = require('../utils/catchAsync');
@@ -116,19 +117,8 @@ exports.updateDocuments = catchAsync(async (req, res, next) => {
     return next(new AppError('No document found with that ID', 404));
   }
 
-  let status;
-
-  if (req.user.role === 'admin') {
-    status = 'Layak';
-    await Notification.create({
-      name: 'Dokumen Dinyatakan Layak',
-      description: `Dokumen penelitian '${document.researchName}' telah dinyatakan layak. Anda dapat melanjutkan proses selanjutnya.`,
-      user: document.createdBy,
-    });
-  } else {
-    status = 'Sedang Diproses';
-    document.reviewers = [];
-  }
+  const status = 'Sedang Diproses';
+  document.reviewers = [];
 
   const oldZipName = document.documents.split('/').pop();
   const oldZipFile = bucket.file(oldZipName);
@@ -193,9 +183,102 @@ exports.updateDocuments = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.updateFormSurat = catchAsync(async (req, res, next) => {
+  const { documentId } = req.params;
+
+  const document = await Document.findById(documentId);
+
+  if (!document) {
+    return next(new AppError('No document found with that ID', 404));
+  }
+
+  const oldZipName = document.documents.split('/').pop();
+  const oldZipFile = bucket.file(oldZipName);
+
+  const [zipExists] = await oldZipFile.exists();
+  if (!zipExists) {
+    return next(
+      new AppError('Zip file not found in Google Cloud Storage', 404),
+    );
+  }
+
+  const [existingZipBuffer] = await oldZipFile.download();
+
+  const zip = new AdmZip(existingZipBuffer);
+  const zipEntries = zip.getEntries();
+
+  const archive = archiver('zip', {
+    zlib: { level: 9 },
+  });
+
+  const buffers = [];
+  archive.on('data', (data) => buffers.push(data));
+
+  let formSuratFound = false;
+  const newFormSuratName = `formSurat-${req.file.originalname}`;
+
+  zipEntries.forEach((entry) => {
+    if (!entry.entryName.startsWith('formSurat')) {
+      archive.append(entry.getData(), { name: entry.entryName });
+    } else {
+      formSuratFound = true;
+      archive.append(req.file.buffer, { name: newFormSuratName });
+    }
+  });
+
+  if (!formSuratFound) {
+    return next(new AppError('formSurat entry not found in the zip', 404));
+  }
+
+  archive.finalize();
+
+  archive.on('end', async () => {
+    const buffer = Buffer.concat(buffers);
+
+    const newZipFileName = `Updated-${oldZipName}`;
+    const newZipFile = bucket.file(newZipFileName);
+
+    const blobStream = newZipFile.createWriteStream({
+      resumable: false,
+    });
+
+    blobStream.on('error', (err) => next(new AppError(err.message, 500)));
+
+    blobStream.on('finish', async () => {
+      await newZipFile.makePublic();
+
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${newZipFileName}`;
+
+      document.status = 'Layak';
+      document.documents = publicUrl;
+      await document.save();
+
+      await oldZipFile.delete();
+
+      res.status(200).json({
+        status: 'success',
+        message: 'formSurat updated successfully',
+        data: document,
+      });
+    });
+
+    blobStream.end(buffer);
+  });
+
+  archive.on('error', (err) =>
+    next(new AppError(`Error occurred while updating formSurat: ${err}`, 500)),
+  );
+});
+
 exports.addReviewers = catchAsync(async (req, res, next) => {
   const { reviewers } = req.body;
   const { documentId } = req.params;
+
+  const document = await Document.findById(documentId);
+
+  if (!document) {
+    return next(new AppError('No document found with that ID', 404));
+  }
 
   const findReviewers = await Promise.all(
     reviewers.map(async (reviewerName) => {
@@ -212,7 +295,7 @@ exports.addReviewers = catchAsync(async (req, res, next) => {
 
       await Notification.create({
         name: 'Berkas Penelitian untuk Direview',
-        description: `Anda telah ditugaskan untuk mereview dokumen penelitian. Segera cek di Berkas!`,
+        description: `Anda telah ditugaskan untuk mereview dokumen penelitian '${document.researchName}'. Segera cek di Berkas!`,
         user: reviewer._id,
       });
 
