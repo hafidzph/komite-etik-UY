@@ -2,7 +2,7 @@
 ![Logo](Logo_K-etik.png)
 
 
-# Komte Etik Universitas YARSI
+# Komite Etik Universitas YARSI
 
 Pengembangan aplikasi web service dan aplikasi komite etik berbasis website untuk meningkatkan efisiensi dan kepatuhan terhadap standar etika penelitian.
 
